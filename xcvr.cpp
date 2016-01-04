@@ -9,14 +9,14 @@ void Xcvr::init(void) {
     si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);  
     // load settings and set frequency
 
-    bands[0].startFrequency = 1800000LL;
-    bands[1].startFrequency = 3500000LL;
-    bands[2].startFrequency = 7000000LL;
-    bands[3].startFrequency = 10000000LL;
-    bands[4].startFrequency = 14000000LL;
-    bands[5].startFrequency = 18000000LL;
-    bands[6].startFrequency = 21000000LL;
-    bands[7].startFrequency = 24000000LL;
+    bands[0].startFrequency = 1800;
+    bands[1].startFrequency = 3500;
+    bands[2].startFrequency = 7000;
+    bands[3].startFrequency = 10000;
+    bands[4].startFrequency = 14000;
+    bands[5].startFrequency = 18000;
+    bands[6].startFrequency = 21000;
+    bands[7].startFrequency = 24000;
 }
 
 void Xcvr::setFilter(unsigned char index) {
@@ -35,13 +35,27 @@ void Xcvr::setSideband(Sideband sideband) {
 
 void Xcvr::nextBand() {
     bandIndex++;
-    bandIndex &= 0x07; // only 8 bands, starting from 0
+    bandIndex %= 10; // only 10 bands, starting from 0
 
-    frequency = bands[bandIndex].startFrequency;
+    frequency = bands[bandIndex].startFrequency * 1000LL;
     vfoFrequency = frequency - filters[filterIndex].centerFrequency;
     setSideband(bands[bandIndex].isUpperSideband ? USB : LSB);
+    ritReset();
     setVfoFrequency();
+    switchBandFilters();
 }
+
+void Xcvr::switchBandFilters() {
+    unsigned char value = 0;
+    if (!isInExternalBandMode()) {
+        value = bandIndex + 1;
+    }
+    digitalWrite(5, (value & 1) == 1 ? HIGH : LOW);
+    digitalWrite(6, (value & 2) == 1 ? HIGH : LOW);
+    digitalWrite(7, (value & 4) == 1 ? HIGH : LOW);
+    digitalWrite(8, (value & 8) == 1 ? HIGH : LOW);
+}
+
 
 unsigned char Xcvr::getBand() {
     return bandIndex;

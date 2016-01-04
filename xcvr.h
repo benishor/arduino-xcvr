@@ -24,8 +24,8 @@ typedef struct Filter {
 };
 
 typedef struct Band {
-	long long startFrequency;
-	long long endFrequency;
+	unsigned short startFrequency; // in KHz
+	unsigned short bandLength; // in KHz
 	bool isUpperSideband;
 };
 
@@ -34,10 +34,7 @@ public:
 	void init(void);
 	void setFilter(unsigned char index);
 	void setSideband(Sideband sideband);
-	void recalculateBfo();
 	void incrementFrequency(int amount);
-	void setVfoFrequency();
-	void setBfoFrequency();
 
 	void nextBand();
 	unsigned char getBand();
@@ -49,13 +46,14 @@ public:
 	void setRit(bool on);
 	void ritIncrement(short amount);
 
+
 	short ritAmount = 0; // delta, in Hz
-	long long frequency = 12106900LL; // in Hz
+	long long frequency = 1000000LL; // in Hz
 
 	Filter filters[4];
 	unsigned char filterIndex;
 
-	Band bands[8]; // 160, 80, 40, 30, 20, 15, 17, 10
+	Band bands[10]; // 160, 80, 40, 30, 20, 15, 17, 10
 	unsigned char bandIndex; // this one can be merged with filterIndex to save space
 
 	Sideband sideband; // 0 == upper, 1 == lower
@@ -67,6 +65,13 @@ public:
 	long long bfoFrequency; // in Hz, changed when switching filters or sideband
 
 	Si5351 si5351;
+
+private:
+	void recalculateBfo();
+	void setVfoFrequency();
+	void setBfoFrequency();
+	void switchBandFilters();
+
 };
 
 
