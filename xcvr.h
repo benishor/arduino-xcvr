@@ -3,6 +3,11 @@
 
 #include <Arduino.h>
 #include <si5351.h>
+#include <U8glib.h>
+#include <TimerOne.h>
+
+#define ENC_DECODER (1 << 2)
+#include <ClickEncoder.h>
 
 enum Sideband {
 	LSB = 0,
@@ -29,12 +34,39 @@ typedef struct Band {
 	bool isUpperSideband;
 };
 
+class Xcvr; // forward
+
+class XcvrUi {
+public:
+	XcvrUi();
+	void init(Xcvr& xcvr);
+	void render();
+	void update();
+
+	static ClickEncoder *encoder;
+
+ private:
+	void draw();
+	void renderFrequency();
+	void renderRit();
+
+	short int lastEncoderValue, currentEncoderValue;
+	short int stepSize = 10;
+	char frequencyRepr[11] = {' ', '2', '8', '.', '1', '1', '0', '.', '2', '0', '\0'};
+	char ritRepr[6] = {'+', '9', '.', '9', '9', '\0'};
+	Xcvr* xcvr;
+	U8GLIB_SSD1306_128X64* display; 
+};
+
 class Xcvr {
 public:
 	void init(void);
 	void setFilter(unsigned char index);
 	void setSideband(Sideband sideband);
 	void incrementFrequency(int amount);
+
+	bool hasStatusChanged();
+	void clearStatusChange();
 
 	void nextBand();
 	unsigned char getBand();
@@ -45,6 +77,7 @@ public:
 	bool isRitOn();
 	void setRit(bool on);
 	void ritIncrement(short amount);
+	short getRitAmount();
 
 
 	short ritAmount = 0; // delta, in Hz
@@ -63,6 +96,7 @@ public:
 
 	long long vfoFrequency; // in Hz, changed when switching encoder or rit
 	long long bfoFrequency; // in Hz, changed when switching filters or sideband
+	bool statusChanged = false;
 
 	Si5351 si5351;
 
@@ -71,6 +105,7 @@ private:
 	void setVfoFrequency();
 	void setBfoFrequency();
 	void switchBandFilters();
+	void applyCurrentBandSettings();
 
 };
 
