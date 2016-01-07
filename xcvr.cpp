@@ -196,10 +196,11 @@ void Xcvr::switchBandFilters() {
     if (!isInExternalBandMode()) {
         value = bandIndex + 1;
     }
-    digitalWrite(5, (value & 1) == 1 ? HIGH : LOW);
-    digitalWrite(6, (value & 2) == 1 ? HIGH : LOW);
-    digitalWrite(7, (value & 4) == 1 ? HIGH : LOW);
-    digitalWrite(8, (value & 8) == 1 ? HIGH : LOW);
+    // TODO: use a port expander for these!
+    // digitalWrite(5, (value & 1) == 1 ? HIGH : LOW);
+    // digitalWrite(6, (value & 2) == 1 ? HIGH : LOW);
+    // digitalWrite(7, (value & 4) == 1 ? HIGH : LOW);
+    // digitalWrite(8, (value & 8) == 1 ? HIGH : LOW);
 }
 
 

@@ -9,6 +9,41 @@
 #define ENC_DECODER (1 << 2)
 #include <ClickEncoder.h>
 
+/**
+	Pins used:
+ 		oled display (SPI):
+ 			- 13 = SCK
+ 			- 12 = MOSI 
+ 			- 11 = MISO
+ 			- 10 = SS
+
+ 		optical encoder
+ 			- A0 = 
+ 			- A1 = 
+ 			- A2 = 
+
+ 		IO port expander
+ 			- A4 = I2C SDA
+ 			- A5 = I2C SCL
+
+ 		Band switching
+ 			- 8
+ 			- 7
+ 			- 6
+ 			- 5
+
+ 		Computer communication (Serial)
+ 			- 0 = TX
+ 			- 1 = RX
+
+ 		Free pins:
+ 			- 2 (led)
+ 			- 3
+ 			- 4
+
+ */
+
+
 enum Sideband {
 	LSB = 0,
 	USB = 1
