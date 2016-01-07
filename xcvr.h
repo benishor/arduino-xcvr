@@ -69,7 +69,9 @@ typedef struct Band {
 	bool isUpperSideband;
 };
 
+// TODO Adrian: extract ui and keyer to their own libs
 class Xcvr; // forward
+class Keyer;
 
 class XcvrUi {
 public:
@@ -93,9 +95,137 @@ public:
 	U8GLIB_SSD1306_128X64* display; 
 };
 
+
+class Keyer {
+public:
+	void init();
+	void update();
+
+	void switch_to_tx_silent(byte tx);
+	void initialize_keyer_state();
+	void initialize_default_modes();
+	void initialize_pins();
+	void check_paddles();
+	void check_dit_paddle();
+	void check_dah_paddle();
+	void ptt_key();
+	void ptt_unkey();
+	void check_ptt_tail();
+	void send_dit(byte sending_type);
+	void send_dah(byte sending_type);
+	void tx_and_sidetone_key(int state, byte sending_type);
+	void loop_element_lengths(float lengths, float additional_time_ms, int speed_wpm_in, byte sending_type);
+	void speed_set(int wpm_set);
+	void sidetone_adj(int hz);
+	void service_dit_dah_buffers();
+	int paddle_pin_read(int pin_to_read);
+	void boop_beep();
+	void beep_boop();
+	void boop();
+	void beep();
+
+	// Variables and stuff
+	struct config_t {  // 23 bytes
+	  unsigned int wpm;
+	  byte paddle_mode;
+	  byte keyer_mode;
+	  byte sidetone_mode;
+	  unsigned int hz_sidetone;
+	  unsigned int dah_to_dit_ratio;
+	  byte length_wordspace;
+	  byte autospace_active;
+	  byte current_ptt_line;
+	  byte current_tx;
+	  byte weighting;
+	  byte dit_buffer_off;
+	  byte dah_buffer_off;
+	} configuration;
+
+
+
+	/** pins **/
+	#define tx_key_line_1 2       // (high = key down/tx on)
+	#define ptt_tx_1 5              // PTT ("push to talk") lines
+	#define paddle_left 3
+	#define paddle_right 4
+	#define tx_key_dit 0            // if defined, goes high for dit (any transmitter)
+	#define tx_key_dah 0            // if defined, goes high for dah (any transmitter)
+	#define sidetone_line 8         // connect a speaker for sidetone
+
+	/** config **/
+
+	#define SENDING_NOTHING 0
+	#define SENDING_DIT 1
+	#define SENDING_DAH 2
+
+	#define STRAIGHT 1
+	#define IAMBIC_B 2
+	#define IAMBIC_A 3
+	#define BUG 4
+	#define ULTIMATIC 5
+
+	#define ULTIMATIC_NORMAL 0
+	#define ULTIMATIC_DIT_PRIORITY 1
+	#define ULTIMATIC_DAH_PRIORITY 2
+
+	#define AUTOMATIC_SENDING 0
+	#define MANUAL_SENDING 1
+
+	#define PADDLE_NORMAL 0
+	#define PADDLE_REVERSE 1
+
+	#define SIDETONE_OFF 0
+	#define SIDETONE_ON 1
+	#define SIDETONE_PADDLE_ONLY 2
+
+	#define initial_dah_to_dit_ratio 300     // 300 = 3 / normal 3:1 ratio
+	#define default_cmos_super_keyer_iambic_b_timing_percent 33 // use with FEATURE_CMOS_SUPER_KEYER_IAMBIC_B_TIMING; should be between 0 to 99 % (0% = true iambic b;100% = iambic a behavior)
+	#define default_length_letterspace 3
+	#define default_length_wordspace 7
+	#define default_weighting 50             // 50 = weighting factor of 1 (normal)
+	#define default_keying_compensation 0    // number of milliseconds to extend all dits and dahs - for QSK on boatanchors
+	#define default_first_extension_time 0   // number of milliseconds to extend first sent dit or dah
+	#define default_ptt_hang_time_wordspace_units 1.0
+	#define wpm_limit_low 5
+	#define wpm_limit_high 60
+	#define hz_high_beep 1500                // frequency in hertz of high beep
+	#define hz_low_beep 400                  // frequency in hertz of low beep
+	#define initial_speed_wpm 26             // "factory default" keyer speed setting
+
+	byte command_mode_disable_tx = 0;
+	byte current_tx_key_line = tx_key_line_1;
+	unsigned int ptt_tail_time[1] = {10};
+	unsigned int ptt_lead_time[1] = {0};
+	byte manual_ptt_invoke = 0;
+	byte key_tx = 0;         // 0 = tx_key_line control suppressed
+	byte dit_buffer = 0;     // used for buffering paddle hits in iambic operation
+	byte dah_buffer = 0;     // used for buffering paddle hits in iambic operation
+	byte button0_buffer = 0;
+	byte being_sent = 0;     // SENDING_NOTHING, SENDING_DIT, SENDING_DAH
+	byte key_state = 0;      // 0 = key up, 1 = key down
+	byte config_dirty = 0;
+	unsigned long ptt_time = 0; 
+	byte ptt_line_activated = 0;
+	byte pause_sending_buffer = 0;
+	byte length_letterspace = default_length_letterspace;
+	byte keying_compensation = default_keying_compensation;
+	byte first_extension_time = default_first_extension_time;
+	byte ultimatic_mode = ULTIMATIC_NORMAL;
+	float ptt_hang_time_wordspace_units = default_ptt_hang_time_wordspace_units;
+	byte last_sending_type = MANUAL_SENDING;
+	byte zero = 0;
+	byte iambic_flag = 0;
+	unsigned long last_config_write = 0;
+
+	#define SIDETONE_HZ_LOW_LIMIT 299
+	#define SIDETONE_HZ_HIGH_LIMIT 2001
+	#define initial_sidetone_freq 600        // "factory default" sidetone frequency setting
+
+};
+
 class Xcvr {
 public:
-	void init(void);
+	void init();
 	void setFilter(unsigned char index);
 	void setSideband(Sideband sideband);
 	void incrementFrequency(int amount);
