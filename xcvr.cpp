@@ -32,7 +32,7 @@ void XcvrUi::update() {
     if (modeDebouncer.update()) {
         if (modeDebouncer.read() == LOW) {
             mode = mode == NORMAL ? SETTING_SPEED : NORMAL;
-            Serial.println("button on");
+            // Serial.println("button on");
         }
     }
 
@@ -334,8 +334,6 @@ void Keyer::initialize_keyer_state() {
   //configuration.current_tx = 1;
   configuration.length_wordspace = default_length_wordspace;
   configuration.weighting = default_weighting;
-  
-  switch_to_tx_silent(1);
 }  
 
 
@@ -343,7 +341,6 @@ void Keyer::initialize_keyer_state() {
 
 void Keyer::initialize_default_modes() {
   // setup default modes
-  configuration.paddle_mode = PADDLE_NORMAL;
   configuration.keyer_mode = IAMBIC_B;
   configuration.sidetone_mode = SIDETONE_ON;
 }  
@@ -491,10 +488,8 @@ void Keyer::check_paddles() {
 
 void Keyer::ptt_key() {
   if (ptt_line_activated == 0) {   // if PTT is currently deactivated, bring it up and insert PTT lead time delay
-    if (configuration.current_ptt_line) {
-      digitalWrite (configuration.current_ptt_line, HIGH);    
-      delay(ptt_lead_time[configuration.current_tx-1]);
-    }
+      digitalWrite(ptt_tx_1, HIGH);    
+      delay(ptt_lead_time);
     ptt_line_activated = 1;
   }
   ptt_time = millis();
@@ -503,9 +498,7 @@ void Keyer::ptt_key() {
 //-------------------------------------------------------------------------------------------------------
 void Keyer::ptt_unkey() {
   if (ptt_line_activated) {
-    if (configuration.current_ptt_line) {
-      digitalWrite (configuration.current_ptt_line, LOW);
-    }
+      digitalWrite (ptt_tx_1, LOW);
     ptt_line_activated = 0;
   }
 }
@@ -520,30 +513,12 @@ void Keyer::check_ptt_tail() {
     if (ptt_line_activated && manual_ptt_invoke == 0) {
       //if ((millis() - ptt_time) > ptt_tail_time) {
       if (last_sending_type == MANUAL_SENDING) {
-        #ifndef OPTION_INCLUDE_PTT_TAIL_FOR_MANUAL_SENDING
         if ((millis() - ptt_time) >= ((configuration.length_wordspace*ptt_hang_time_wordspace_units)*float(1200/configuration.wpm)) ) {
           ptt_unkey();
         }          
-        #else //ndef OPTION_INCLUDE_PTT_TAIL_FOR_MANUAL_SENDING
-        #ifndef OPTION_EXCLUDE_PTT_HANG_TIME_FOR_MANUAL_SENDING
-        if ((millis() - ptt_time) >= (((configuration.length_wordspace*ptt_hang_time_wordspace_units)*float(1200/configuration.wpm))+ptt_tail_time[configuration.current_tx-1])) {       
-          ptt_unkey();
-        }
-        #else //OPTION_EXCLUDE_PTT_HANG_TIME_FOR_MANUAL_SENDING
-        if ((millis() - ptt_time) >= ptt_tail_time[configuration.current_tx-1]) {       
-          ptt_unkey();
-        }
-        #endif //OPTION_EXCLUDE_PTT_HANG_TIME_FOR_MANUAL_SENDING
-        #endif //ndef OPTION_INCLUDE_PTT_TAIL_FOR_MANUAL_SENDING
       } else {
-        if ((millis() - ptt_time) > ptt_tail_time[configuration.current_tx-1]) {
-          #ifdef OPTION_KEEP_PTT_KEYED_WHEN_CHARS_BUFFERED
-          if (!send_buffer_bytes){
+        if ((millis() - ptt_time) > ptt_tail_time) {
             ptt_unkey();
-          }
-          #else
-          ptt_unkey();
-          #endif //OPTION_KEEP_PTT_KEYED_WHEN_CHARS_BUFFERED
         }
       }
     }
@@ -553,17 +528,7 @@ void Keyer::check_ptt_tail() {
 //-------------------------------------------------------------------------------------------------------
 
 void Keyer::check_dit_paddle() {
-  byte pin_value = 0;
-  byte dit_paddle = 0;
-  static byte memory_rpt_interrupt_flag = 0;
-
-  if (configuration.paddle_mode == PADDLE_NORMAL) {
-    dit_paddle = paddle_left;
-  } else {
-    dit_paddle = paddle_right;
-  }
-
-  pin_value = paddle_pin_read(dit_paddle);
+  byte pin_value = paddle_pin_read(paddle_left);
   if (pin_value == 0) {
     dit_buffer = 1;
     manual_ptt_invoke = 0;
@@ -573,17 +538,7 @@ void Keyer::check_dit_paddle() {
 //-------------------------------------------------------------------------------------------------------
 
 void Keyer::check_dah_paddle() {
-  byte pin_value = 0;
-  byte dah_paddle;
-
-  if (configuration.paddle_mode == PADDLE_NORMAL) {
-    dah_paddle = paddle_right;
-  } else {
-    dah_paddle = paddle_left;
-  }
-
-  pin_value = paddle_pin_read(dah_paddle);
-
+  byte pin_value = paddle_pin_read(paddle_right);
   if (pin_value == 0) {
     dah_buffer = 1;
     manual_ptt_invoke = 0;
@@ -665,11 +620,11 @@ void Keyer::send_dah(byte sending_type) {
 
 void Keyer::tx_and_sidetone_key(int state, byte sending_type) {
 
-  if ((state) && (key_state == 0)) {
+  if (state && key_state == 0) {
     if (key_tx) {
       byte previous_ptt_line_activated = ptt_line_activated;
       ptt_key();
-      if (current_tx_key_line) {digitalWrite (current_tx_key_line, HIGH);}
+      digitalWrite(tx_key_line_1, HIGH);
       if ((first_extension_time) && (previous_ptt_line_activated == 0)) {
         delay(first_extension_time);
       }
@@ -680,9 +635,9 @@ void Keyer::tx_and_sidetone_key(int state, byte sending_type) {
     }
     key_state = 1;
   } else {
-    if ((state == 0) && (key_state)) {
+    if (state == 0 && key_state) {
       if (key_tx) {
-        if (current_tx_key_line) {digitalWrite (current_tx_key_line, LOW);}
+        digitalWrite (tx_key_line_1, LOW);
         ptt_key();
       }
       if (configuration.sidetone_mode == SIDETONE_ON || configuration.sidetone_mode == SIDETONE_PADDLE_ONLY) {
@@ -751,14 +706,6 @@ void Keyer::sidetone_adj(int hz) {
   }
 }
 
-//-------------------------------------------------------------------------------------------------------
-
-void Keyer::switch_to_tx_silent(byte tx) {
-  configuration.current_ptt_line = ptt_tx_1; 
-  current_tx_key_line = tx_key_line_1; 
-  configuration.current_tx = 1; 
-  config_dirty = 1;
-}
 
 //------------------------------------------------------------------
 

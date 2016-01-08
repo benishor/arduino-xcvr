@@ -141,15 +141,12 @@ public:
 	// Variables and stuff
 	struct config_t {  // 23 bytes
 	  unsigned int wpm;
-	  byte paddle_mode;
 	  byte keyer_mode;
 	  byte sidetone_mode;
 	  unsigned int hz_sidetone;
 	  unsigned int dah_to_dit_ratio;
 	  byte length_wordspace;
 	  byte autospace_active;
-	  byte current_ptt_line;
-	  byte current_tx;
 	  byte weighting;
 	  byte dit_buffer_off;
 	  byte dah_buffer_off;
@@ -193,7 +190,6 @@ public:
 	#define SIDETONE_PADDLE_ONLY 2
 
 	#define initial_dah_to_dit_ratio 300     // 300 = 3 / normal 3:1 ratio
-	#define default_cmos_super_keyer_iambic_b_timing_percent 33 // use with FEATURE_CMOS_SUPER_KEYER_IAMBIC_B_TIMING; should be between 0 to 99 % (0% = true iambic b;100% = iambic a behavior)
 	#define default_length_letterspace 3
 	#define default_length_wordspace 7
 	#define default_weighting 50             // 50 = weighting factor of 1 (normal)
@@ -204,23 +200,20 @@ public:
 	#define wpm_limit_high 60
 	#define hz_high_beep 1500                // frequency in hertz of high beep
 	#define hz_low_beep 400                  // frequency in hertz of low beep
-	#define initial_speed_wpm 26             // "factory default" keyer speed setting
+	#define initial_speed_wpm 24             // "factory default" keyer speed setting
 
 	byte command_mode_disable_tx = 0;
-	byte current_tx_key_line = tx_key_line_1;
-	unsigned int ptt_tail_time[1] = {10};
-	unsigned int ptt_lead_time[1] = {0};
+	byte ptt_tail_time = 10;
+	byte ptt_lead_time = 10;
 	byte manual_ptt_invoke = 0;
 	byte key_tx = 0;         // 0 = tx_key_line control suppressed
 	byte dit_buffer = 0;     // used for buffering paddle hits in iambic operation
 	byte dah_buffer = 0;     // used for buffering paddle hits in iambic operation
-	byte button0_buffer = 0;
 	byte being_sent = 0;     // SENDING_NOTHING, SENDING_DIT, SENDING_DAH
 	byte key_state = 0;      // 0 = key up, 1 = key down
 	byte config_dirty = 0;
 	unsigned long ptt_time = 0; 
 	byte ptt_line_activated = 0;
-	byte pause_sending_buffer = 0;
 	byte length_letterspace = default_length_letterspace;
 	byte keying_compensation = default_keying_compensation;
 	byte first_extension_time = default_first_extension_time;
@@ -234,7 +227,6 @@ public:
 	#define SIDETONE_HZ_LOW_LIMIT 299
 	#define SIDETONE_HZ_HIGH_LIMIT 2001
 	#define initial_sidetone_freq 600        // "factory default" sidetone frequency setting
-
 };
 
 class Xcvr {
@@ -266,7 +258,7 @@ public:
 	unsigned char filterIndex;
 
 	Band bands[10]; // 160, 80, 40, 30, 20, 15, 17, 10
-	unsigned char bandIndex; // this one can be merged with filterIndex to save space
+	unsigned char bandIndex; // this one can be merged with filterIndex and status changedto save space
 
 	Sideband sideband; // 0 == upper, 1 == lower
 	short int cwPitch = 500;
