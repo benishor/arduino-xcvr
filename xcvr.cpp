@@ -8,7 +8,7 @@ void timerIsr() {
     XcvrUi::encoder->service();
 }
 
-Button modeButton;
+Bounce modeDebouncer = Bounce();
 
 void XcvrUi::init(Xcvr& xcvr, Keyer& keyer) {
     this->xcvr = &xcvr;
@@ -19,24 +19,23 @@ void XcvrUi::init(Xcvr& xcvr, Keyer& keyer) {
     Timer1.initialize(1000);
     Timer1.attachInterrupt(timerIsr);
 
-    modeButton.assign(8);
-    modeButton.turnOnPullUp();
-    modeButton.setMode(OneShotTimer); // return on first
-    modeButton.setTimer(1500); // then after 1.5 sec return hold
-    modeButton.setRefresh(500); // then return hold every 500ms
+    // initialize UI mode button
+    pinMode(8, INPUT);
+    digitalWrite(8, HIGH); // enable pull-up
+    modeDebouncer.attach(8);
+    modeDebouncer.interval(5);
 }
 
 void XcvrUi::update() {
-    switch (modeButton.check()) {
-        case Button_ON:
+
+    // check if button state changed
+    if (modeDebouncer.update()) {
+        if (modeDebouncer.read() == LOW) {
             mode = mode == NORMAL ? SETTING_SPEED : NORMAL;
             Serial.println("button on");
-            break;
-        case Button_Hold:
-            break;
-        default:
-            break;
+        }
     }
+
 
     currentEncoderValue += encoder->getValue();
     bool encoderChanged = currentEncoderValue != lastEncoderValue;

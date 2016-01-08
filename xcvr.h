@@ -8,7 +8,7 @@
 
 #define ENC_DECODER (1 << 2)
 #include <ClickEncoder.h>
-#include <buttons.h>  // http://playground.arduino.cc/Code/Buttons
+#include <Bounce2.h>  // https://github.com/thomasfredericks/Bounce2
 
 /**
 	Pins used:
