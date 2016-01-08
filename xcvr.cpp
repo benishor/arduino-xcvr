@@ -8,16 +8,36 @@ void timerIsr() {
     XcvrUi::encoder->service();
 }
 
-void XcvrUi::init(Xcvr& xcvr) {
+Button modeButton;
+
+void XcvrUi::init(Xcvr& xcvr, Keyer& keyer) {
     this->xcvr = &xcvr;
+    this->keyer = &keyer;
     display = new U8GLIB_SSD1306_128X64(13, 12, 0, 11, 10); // CS is not used
     encoder = new ClickEncoder(A1, A0, A2);
 
     Timer1.initialize(1000);
     Timer1.attachInterrupt(timerIsr);
+
+    modeButton.assign(8);
+    modeButton.turnOnPullUp();
+    modeButton.setMode(OneShotTimer); // return on first
+    modeButton.setTimer(1500); // then after 1.5 sec return hold
+    modeButton.setRefresh(500); // then return hold every 500ms
 }
 
 void XcvrUi::update() {
+    switch (modeButton.check()) {
+        case Button_ON:
+            mode = mode == NORMAL ? SETTING_SPEED : NORMAL;
+            Serial.println("button on");
+            break;
+        case Button_Hold:
+            break;
+        default:
+            break;
+    }
+
     currentEncoderValue += encoder->getValue();
     bool encoderChanged = currentEncoderValue != lastEncoderValue;
 
@@ -27,11 +47,21 @@ void XcvrUi::update() {
         if (amountToAdd != 0) {
             currentEncoderValue -= amountToAdd * 3;
 
-            if (xcvr->isRitOn()) {
-                xcvr->ritIncrement(amountToAdd * 10);
-            } else {
-                xcvr->incrementFrequency(amountToAdd * stepSize);
+            switch (mode) {
+                case NORMAL:
+                    if (xcvr->isRitOn()) {
+                        xcvr->ritIncrement(amountToAdd * 10);
+                    } else {
+                        xcvr->incrementFrequency(amountToAdd * stepSize);
+                    }
+                    break;
+                case SETTING_SPEED:
+                    keyer->speed_change(amountToAdd);
+                    break;
+                default:
+                    break;
             }
+
         }
     }
 
@@ -46,9 +76,10 @@ void XcvrUi::update() {
     }
 
 
-    if (xcvr->hasStatusChanged()) {
+    if (xcvr->hasStatusChanged() || keyer->config_dirty) {
         render();
         xcvr->clearStatusChange();
+        keyer->config_dirty = 0;
     }
 }
 
@@ -63,13 +94,17 @@ void XcvrUi::draw() {
     renderFrequency();
     renderRit();
 
-    display->setFont(u8g_font_8x13B);
-    display->drawStr(0, 10, frequencyRepr);
-
     if (xcvr->isRitOn()) {
         display->setFont(u8g_font_helvB08);
         display->drawStr(90, 10, ritRepr);
     }
+
+    display->setFont(u8g_font_8x13B);
+    display->drawStr(0, 10, frequencyRepr);
+
+    wpmRepr[4] = (keyer->configuration.wpm > 9) ? (keyer->configuration.wpm / 10) + '0' : ' ';
+    wpmRepr[5] = (char)(keyer->configuration.wpm % 10) + '0';
+    display->drawStr(0, 30, wpmRepr);
 }
 
 void XcvrUi::renderFrequency() {
@@ -697,6 +732,12 @@ void Keyer::loop_element_lengths(float lengths, float additional_time_ms, int sp
 
 
 //-------------------------------------------------------------------------------------------------------
+
+void Keyer::speed_change(int change) {
+  if (((configuration.wpm + change) > wpm_limit_low) && ((configuration.wpm + change) < wpm_limit_high)) {
+    speed_set(configuration.wpm + change);
+  }
+}
 
 void Keyer::speed_set(int wpm_set) {
   configuration.wpm = wpm_set;

@@ -8,38 +8,43 @@
 
 #define ENC_DECODER (1 << 2)
 #include <ClickEncoder.h>
+#include <buttons.h>  // http://playground.arduino.cc/Code/Buttons
 
 /**
 	Pins used:
- 		oled display (SPI):
+ 		OLED display (SPI):
  			- 13 = SCK
  			- 12 = MOSI 
  			- 11 = MISO
  			- 10 = SS
 
- 		optical encoder
+ 		Optical encoder
  			- A0 = 
  			- A1 = 
  			- A2 = 
 
- 		IO port expander
+ 		I2C IO port expander
  			- A4 = I2C SDA
  			- A5 = I2C SCL
 
  		Band switching
- 			- 8
- 			- 7
- 			- 6
- 			- 5
+ 			- will be done through the I2C port expander (4 bits)
 
  		Computer communication (Serial)
  			- 0 = TX
  			- 1 = RX
 
+ 		Keyer
+ 			- 2 = TX
+ 			- 3 = DIT
+ 			- 4 = DAH
+ 			- 5 = PTT 
+ 			- 6 = SIDETONE
+
  		Free pins:
- 			- 2 (led)
- 			- 3
- 			- 4
+ 			- 7
+ 			- 8 = change ui mode
+ 			- 9
 
  */
 
@@ -73,10 +78,15 @@ typedef struct Band {
 class Xcvr; // forward
 class Keyer;
 
+enum UiMode {
+	NORMAL,
+	SETTING_SPEED
+};
+
 class XcvrUi {
 public:
 	XcvrUi();
-	void init(Xcvr& xcvr);
+	void init(Xcvr& xcvr, Keyer& keyer);
 	void render();
 	void update();
 
@@ -87,11 +97,14 @@ public:
 	void renderFrequency();
 	void renderRit();
 
+	UiMode mode = NORMAL;
 	short int lastEncoderValue, currentEncoderValue;
 	short int stepSize = 10;
 	char frequencyRepr[11] = {' ', '2', '8', '.', '1', '1', '0', '.', '2', '0', '\0'};
 	char ritRepr[6] = {'+', '9', '.', '9', '9', '\0'};
+	char wpmRepr[7] = {'W', 'P', 'M', ' ', '2', '0', '\0'};
 	Xcvr* xcvr;
+	Keyer* keyer;
 	U8GLIB_SSD1306_128X64* display; 
 };
 
@@ -116,6 +129,7 @@ public:
 	void tx_and_sidetone_key(int state, byte sending_type);
 	void loop_element_lengths(float lengths, float additional_time_ms, int speed_wpm_in, byte sending_type);
 	void speed_set(int wpm_set);
+	void speed_change(int change);
 	void sidetone_adj(int hz);
 	void service_dit_dah_buffers();
 	int paddle_pin_read(int pin_to_read);
@@ -150,7 +164,7 @@ public:
 	#define paddle_right 4
 	#define tx_key_dit 0            // if defined, goes high for dit (any transmitter)
 	#define tx_key_dah 0            // if defined, goes high for dah (any transmitter)
-	#define sidetone_line 8         // connect a speaker for sidetone
+	#define sidetone_line 6         // connect a speaker for sidetone
 
 	/** config **/
 
