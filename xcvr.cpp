@@ -31,8 +31,13 @@ void XcvrUi::update() {
     // check if button state changed
     if (modeDebouncer.update()) {
         if (modeDebouncer.read() == LOW) {
-            mode = mode == NORMAL ? SETTING_SPEED : NORMAL;
-            // Serial.println("button on");
+            if (mode == NORMAL) {
+                mode = SETTING_SPEED;
+                keyer->key_tx = 0;
+            } else {
+                mode = NORMAL;
+                keyer->key_tx = 1;
+            }
         }
     }
 
