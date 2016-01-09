@@ -82,8 +82,6 @@ void XcvrUi::update() {
 
     if (xcvr->hasStatusChanged() || keyer->config_dirty) {
         render();
-        xcvr->clearStatusChange();
-        keyer->config_dirty = 0;
     }
 }
 
@@ -92,23 +90,42 @@ void XcvrUi::render() {
     do {
         draw();
     } while (display->nextPage());
+
+    xcvr->clearStatusChange();
+    keyer->config_dirty = 0;
 }
 
 void XcvrUi::draw() {
-    renderFrequency();
-    renderRit();
-
     if (xcvr->isRitOn()) {
+        renderRit();
         display->setFont(u8g_font_helvB08);
         display->drawStr(90, 10, ritRepr);
     }
 
+    // render frequency
+    renderFrequency();
     display->setFont(u8g_font_8x13B);
     display->drawStr(0, 10, frequencyRepr);
 
+    // render wpm
     wpmRepr[4] = (keyer->configuration.wpm > 9) ? (keyer->configuration.wpm / 10) + '0' : ' ';
     wpmRepr[5] = (char)(keyer->configuration.wpm % 10) + '0';
     display->drawStr(0, 30, wpmRepr);
+
+    // render band
+    Band& band = xcvr->bands[xcvr->getBand()];
+    if (band.meters == 0) {
+        bandRepr[5] = 'E';
+        bandRepr[6] = 'x';
+        bandRepr[7] = 't';
+        bandRepr[8] = ' ';
+    } else {
+        bandRepr[5] = band.meters > 99 ? + '1' : ' ';
+        bandRepr[6] = ((band.meters / 10) % 10) + '0';
+        bandRepr[7] = (band.meters % 10) + '0';
+        bandRepr[8] = 'm';
+    }
+    display->drawStr(0, 50, bandRepr);
 }
 
 void XcvrUi::renderFrequency() {
@@ -189,15 +206,18 @@ void Xcvr::init(void) {
     bands[5].startFrequency = 18000;
     bands[6].startFrequency = 21000;
     bands[7].startFrequency = 24000;
+    bands[8].startFrequency = 10000;
+
+    bands[0].meters = 160;
+    bands[1].meters = 80;
+    bands[2].meters = 40;
+    bands[3].meters = 30;
+    bands[4].meters = 20;
+    bands[5].meters = 17;
+    bands[6].meters = 15;
+    bands[7].meters = 12;
 
     applyCurrentBandSettings();
-}
-
-bool Xcvr::hasStatusChanged() {
-    return statusChanged;
-}
-void Xcvr::clearStatusChange() {
-    statusChanged = false;
 }
 
 
@@ -217,7 +237,7 @@ void Xcvr::setSideband(Sideband sideband) {
 
 void Xcvr::nextBand() {
     bandIndex++;
-    bandIndex %= 10; // only 10 bands, starting from 0
+    bandIndex %= 9;
     applyCurrentBandSettings();
 }
 
@@ -225,39 +245,18 @@ void Xcvr::applyCurrentBandSettings() {
     frequency = bands[bandIndex].startFrequency * 1000LL;
     vfoFrequency = frequency - filters[filterIndex].centerFrequency;
     setSideband(bands[bandIndex].isUpperSideband ? USB : LSB);
-    ritReset();
+    // ritReset();
     setVfoFrequency();
     switchBandFilters();
 }
 
 void Xcvr::switchBandFilters() {
-    unsigned char value = 0;
-    if (!isInExternalBandMode()) {
-        value = bandIndex + 1;
-    }
     // TODO: use a port expander for these!
+    char value = bandIndex; // write it
     // digitalWrite(5, (value & 1) == 1 ? HIGH : LOW);
     // digitalWrite(6, (value & 2) == 1 ? HIGH : LOW);
     // digitalWrite(7, (value & 4) == 1 ? HIGH : LOW);
     // digitalWrite(8, (value & 8) == 1 ? HIGH : LOW);
-}
-
-
-unsigned char Xcvr::getBand() {
-    return bandIndex;
-}
-
-void Xcvr::setExternalBandMode(bool on) {
-    if (on)
-        this->flags |= EXTERNAL_FILTERS_ON;
-    else
-        this->flags &= ~EXTERNAL_FILTERS_ON;
-
-    statusChanged = true;
-}
-
-bool Xcvr::isInExternalBandMode() {
-    return (this->flags & EXTERNAL_FILTERS_ON) == EXTERNAL_FILTERS_ON;
 }
 
 // -----------------------------------------------------------------------------

@@ -71,6 +71,7 @@ typedef struct Filter {
 typedef struct Band {
 	unsigned short startFrequency; // in KHz
 	unsigned short bandLength; // in KHz
+	byte meters;
 	bool isUpperSideband;
 };
 
@@ -100,9 +101,13 @@ public:
 	UiMode mode = NORMAL;
 	short int lastEncoderValue, currentEncoderValue;
 	short int stepSize = 10;
+
+	// TODO: since we are not drawing in parallel, perhaps we can use a single buffer for all text renderings
 	char frequencyRepr[11] = {' ', '2', '8', '.', '1', '1', '0', '.', '2', '0', '\0'};
 	char ritRepr[6] = {'+', '9', '.', '9', '9', '\0'};
 	char wpmRepr[7] = {'W', 'P', 'M', ' ', '2', '0', '\0'};
+	char bandRepr[10] = {'B', 'a', 'n', 'd', ' ', '1', '6', '0', 'm', '\0'};
+
 	Xcvr* xcvr;
 	Keyer* keyer;
 	U8GLIB_SSD1306_128X64* display; 
@@ -140,16 +145,16 @@ public:
 
 	// Variables and stuff
 	struct config_t {  // 23 bytes
-	  unsigned int wpm;
-	  byte keyer_mode;
-	  byte sidetone_mode;
-	  unsigned int hz_sidetone;
-	  unsigned int dah_to_dit_ratio;
-	  byte length_wordspace;
-	  byte autospace_active;
-	  byte weighting;
-	  byte dit_buffer_off;
-	  byte dah_buffer_off;
+		unsigned int wpm;
+		byte keyer_mode;
+		byte sidetone_mode;
+		unsigned int hz_sidetone;
+		unsigned int dah_to_dit_ratio;
+		byte length_wordspace;
+		byte autospace_active;
+		byte weighting;
+		byte dit_buffer_off;
+		byte dah_buffer_off;
 	} configuration;
 
 
@@ -236,13 +241,11 @@ public:
 	void setSideband(Sideband sideband);
 	void incrementFrequency(int amount);
 
-	bool hasStatusChanged();
-	void clearStatusChange();
+	bool inline hasStatusChanged() { return statusChanged; }
+	void inline clearStatusChange() { statusChanged = false; }
 
 	void nextBand();
-	unsigned char getBand();
-	bool isInExternalBandMode();
-	void setExternalBandMode(bool on);
+	byte inline getBand() { return bandIndex; }
 
 	void ritReset();
 	bool isRitOn();
@@ -254,14 +257,14 @@ public:
 	short ritAmount = 0; // delta, in Hz
 	long long frequency = 1000000LL; // in Hz
 
-	Filter filters[4];
+	Filter filters[1];
 	unsigned char filterIndex;
 
-	Band bands[10]; // 160, 80, 40, 30, 20, 15, 17, 10
+	Band bands[9]; // 160, 80, 40, 30, 20, 15, 17, 10, ext
 	unsigned char bandIndex; // this one can be merged with filterIndex and status changedto save space
 
 	Sideband sideband; // 0 == upper, 1 == lower
-	short int cwPitch = 500;
+	word cwPitch = 500;
 
 	unsigned char flags;
 
@@ -277,7 +280,6 @@ private:
 	void setBfoFrequency();
 	void switchBandFilters();
 	void applyCurrentBandSettings();
-
 };
 
 
