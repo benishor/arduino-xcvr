@@ -41,8 +41,6 @@ void XcvrUi::update() {
                 case SETTING_SPEED:
                     keyer->key_tx = 0;
                     break;
-                case SETTING_RIT:
-                    break;
                 default:
                     keyer->key_tx = 1;
                     break;
@@ -71,6 +69,13 @@ void XcvrUi::update() {
                     break;
                 case SETTING_SPEED:
                     keyer->speed_change(amountToAdd);
+                    break;
+                case SETTING_KEYER_MODE:
+                    keyer->configuration.keyer_mode++;
+                    if (keyer->configuration.keyer_mode == 6) {
+                        keyer->configuration.keyer_mode = 1;
+                    }
+                    keyer->config_dirty = 1;
                     break;
                 case SETTING_BAND:
                     xcvr->nextBand();
@@ -167,6 +172,34 @@ void XcvrUi::draw() {
         display->setColorIndex(1);
     } else {
         display->drawStr(2, 50, bandRepr);
+    }
+
+    // render keyer mode
+    if (mode == SETTING_KEYER_MODE) {
+        display->drawRBox(58, 17, 73, 17, 2);
+        display->setColorIndex(0);
+    }
+    switch (keyer->configuration.keyer_mode) {
+        case STRAIGHT:
+            display->drawStr(60, 30, "STRAIGHT ");
+            break;
+        case IAMBIC_A:
+            display->drawStr(60, 30, "IAMBIC A ");
+            break;
+        case IAMBIC_B:
+            display->drawStr(60, 30, "IAMBIC B ");
+            break;
+        case BUG:
+            display->drawStr(60, 30, "   BUG   ");
+            break;
+        case ULTIMATIC:
+            display->drawStr(60, 30, "ULTIMATIC");
+            break;
+        default:
+            break;
+    }
+    if (mode == SETTING_KEYER_MODE) {
+        display->setColorIndex(1);
     }
 }
 
