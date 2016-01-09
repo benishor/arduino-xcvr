@@ -85,6 +85,7 @@ enum UiMode {
 	SETTING_SPEED,
 	SETTING_KEYER_MODE,
 	SETTING_BAND,
+	SETTING_CW_PITCH,
 	LAST_MODE 
 };
 
@@ -105,12 +106,6 @@ public:
 	byte mode = NORMAL;
 	short int lastEncoderValue, currentEncoderValue;
 	short int stepSize = 10;
-
-	// TODO: since we are not drawing in parallel, perhaps we can use a single buffer for all text renderings
-	char frequencyRepr[11] = {' ', '2', '8', '.', '1', '1', '0', '.', '2', '0', '\0'};
-	char ritRepr[6] = {'+', '9', '.', '9', '9', '\0'};
-	char wpmRepr[7] = {'2', '0', ' ', 'W', 'P', 'M', '\0'};
-	char bandRepr[5] = {'1', '6', '0', 'M', '\0'};
 
 	Xcvr* xcvr;
 	Keyer* keyer;
@@ -247,6 +242,8 @@ public:
 
 	bool inline hasStatusChanged() { return statusChanged; }
 	void inline clearStatusChange() { statusChanged = false; }
+
+	void setCwPitch(unsigned short int pitch);
 
 	void nextBand();
 	byte inline getBand() { return bandIndex; }

@@ -10,11 +10,14 @@ void timerIsr() {
 
 Bounce modeDebouncer = Bounce();
 
+static unsigned long lastUiUpdate = 0;
+
 void XcvrUi::init(Xcvr& xcvr, Keyer& keyer) {
     this->xcvr = &xcvr;
     this->keyer = &keyer;
     display = new U8GLIB_SSD1306_128X64(13, 12, 0, 11, 10); // CS is not used
     encoder = new ClickEncoder(A1, A0, A2);
+
 
     Timer1.initialize(1000);
     Timer1.attachInterrupt(timerIsr);
@@ -77,6 +80,10 @@ void XcvrUi::update() {
                     }
                     keyer->config_dirty = 1;
                     break;
+                case SETTING_CW_PITCH:
+                    keyer->sidetone_adj(amountToAdd * 10);
+                    xcvr->setCwPitch(keyer->configuration.hz_sidetone);
+                    break;
                 case SETTING_BAND:
                     xcvr->nextBand();
                     break;
@@ -99,9 +106,22 @@ void XcvrUi::update() {
 
 
     if (xcvr->hasStatusChanged() || keyer->config_dirty) {
+        lastUiUpdate = millis();
+        display->sleepOff();
         render();
+    } else {
+        if ((millis() - lastUiUpdate) > 10 * 1000) {
+            display->sleepOn();
+        }
     }
 }
+
+// TODO: since we are not drawing in parallel, perhaps we can use a single buffer for all text renderings
+static char frequencyRepr[11] = {' ', '2', '8', '.', '1', '1', '0', '.', '2', '0', '\0'};
+static char ritRepr[6] = {'+', '9', '.', '9', '9', '\0'};
+static char wpmRepr[7] = {'2', '0', ' ', 'W', 'P', 'M', '\0'};
+static char bandRepr[5] = {'1', '6', '0', 'M', '\0'};
+static char pitchRepr[7] = {'1', '2', '0', '0', 'H', 'z', '\0'};
 
 void XcvrUi::render() {
     display->firstPage();
@@ -139,6 +159,8 @@ void XcvrUi::draw() {
         display->drawStr(0, 12, frequencyRepr);
     // }
 
+    display->setFont(u8g_font_helvB08);
+
     // render wpm
     wpmRepr[0] = (keyer->configuration.wpm > 9) ? (keyer->configuration.wpm / 10) + '0' : ' ';
     wpmRepr[1] = (char)(keyer->configuration.wpm % 10) + '0';
@@ -150,28 +172,6 @@ void XcvrUi::draw() {
         display->setColorIndex(1);
     } else {
         display->drawStr(2, 30, wpmRepr);
-    }
-
-    // render band
-    Band& band = xcvr->bands[xcvr->getBand()];
-    if (band.meters == 0) {
-        bandRepr[0] = 'E';
-        bandRepr[1] = 'X';
-        bandRepr[2] = 'T';
-        bandRepr[3] = '.';
-    } else {
-        bandRepr[0] = band.meters > 99 ? + '1' : ' ';
-        bandRepr[1] = ((band.meters / 10) % 10) + '0';
-        bandRepr[2] = (band.meters % 10) + '0';
-        bandRepr[3] = 'M';
-    }
-    if (mode == SETTING_BAND) {
-        display->drawRBox(0, 36, 36, 17, 2);
-        display->setColorIndex(0);
-        display->drawStr(2, 50, bandRepr);
-        display->setColorIndex(1);
-    } else {
-        display->drawStr(2, 50, bandRepr);
     }
 
     // render keyer mode
@@ -201,6 +201,52 @@ void XcvrUi::draw() {
     if (mode == SETTING_KEYER_MODE) {
         display->setColorIndex(1);
     }
+
+
+    // render band
+    Band& band = xcvr->bands[xcvr->getBand()];
+    if (band.meters == 0) {
+        bandRepr[0] = 'E';
+        bandRepr[1] = 'X';
+        bandRepr[2] = 'T';
+        bandRepr[3] = '.';
+    } else {
+        bandRepr[0] = band.meters > 99 ? + '1' : ' ';
+        bandRepr[1] = ((band.meters / 10) % 10) + '0';
+        bandRepr[2] = (band.meters % 10) + '0';
+        bandRepr[3] = 'M';
+    }
+    if (mode == SETTING_BAND) {
+        display->drawRBox(0, 34, 36, 17, 2);
+        display->setColorIndex(0);
+        display->drawStr(2, 47, bandRepr);
+        display->setColorIndex(1);
+    } else {
+        display->drawStr(2, 47, bandRepr);
+    }
+
+    // render cw pitch
+    pitchRepr[0] = xcvr->cwPitch > 999 ? (xcvr->cwPitch / 1000) + '0' : ' ';
+    pitchRepr[1] = ((xcvr->cwPitch / 100) % 10) + '0';
+    pitchRepr[2] = ((xcvr->cwPitch / 10) % 10) + '0';
+    pitchRepr[3] = (xcvr->cwPitch % 10) + '0';
+
+    if (mode == SETTING_CW_PITCH) {
+        display->drawRBox(80, 34, 38, 17, 2);
+        display->setColorIndex(0);
+        display->drawStr(82, 47, pitchRepr);
+        display->setColorIndex(1);
+    } else {
+        display->drawStr(82, 47, pitchRepr);
+    }
+
+    // render features
+    display->drawStr(2, 64, "ATT");
+    display->drawStr(30, 64, "AMP");
+    display->drawStr(60, 64, "PTT");
+
+    // render pitch
+
 }
 
 void XcvrUi::renderFrequency() {
@@ -362,6 +408,14 @@ void Xcvr::ritIncrement(short amount) {
 
 short Xcvr::getRitAmount() {
     return this->ritAmount;
+}
+
+
+void Xcvr::setCwPitch(unsigned short int pitch) {
+    cwPitch = pitch;
+    recalculateBfo();
+    setBfoFrequency();
+    statusChanged = true;
 }
 
 // -----------------------------------------------------------------------------
