@@ -80,8 +80,11 @@ class Xcvr; // forward
 class Keyer;
 
 enum UiMode {
-	NORMAL,
-	SETTING_SPEED
+	NORMAL = 0,
+	SETTING_RIT = 1,
+	SETTING_SPEED = 2,
+	SETTING_BAND = 3,
+	LAST_MODE 
 };
 
 class XcvrUi {
@@ -98,15 +101,15 @@ public:
 	void renderFrequency();
 	void renderRit();
 
-	UiMode mode = NORMAL;
+	byte mode = NORMAL;
 	short int lastEncoderValue, currentEncoderValue;
 	short int stepSize = 10;
 
 	// TODO: since we are not drawing in parallel, perhaps we can use a single buffer for all text renderings
 	char frequencyRepr[11] = {' ', '2', '8', '.', '1', '1', '0', '.', '2', '0', '\0'};
 	char ritRepr[6] = {'+', '9', '.', '9', '9', '\0'};
-	char wpmRepr[7] = {'W', 'P', 'M', ' ', '2', '0', '\0'};
-	char bandRepr[10] = {'B', 'a', 'n', 'd', ' ', '1', '6', '0', 'm', '\0'};
+	char wpmRepr[7] = {'2', '0', ' ', 'W', 'P', 'M', '\0'};
+	char bandRepr[5] = {'1', '6', '0', 'M', '\0'};
 
 	Xcvr* xcvr;
 	Keyer* keyer;

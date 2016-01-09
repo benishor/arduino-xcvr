@@ -31,13 +31,24 @@ void XcvrUi::update() {
     // check if button state changed
     if (modeDebouncer.update()) {
         if (modeDebouncer.read() == LOW) {
-            if (mode == NORMAL) {
-                mode = SETTING_SPEED;
-                keyer->key_tx = 0;
-            } else {
-                mode = NORMAL;
-                keyer->key_tx = 1;
+            mode++;
+            if (mode == SETTING_RIT && !xcvr->isRitOn()) {
+                mode++;
             }
+            mode %= LAST_MODE;
+
+            switch (mode) {
+                case SETTING_SPEED:
+                    keyer->key_tx = 0;
+                    break;
+                case SETTING_RIT:
+                    break;
+                default:
+                    keyer->key_tx = 1;
+                    break;
+            }
+
+            xcvr->statusChanged = true;
         }
     }
 
@@ -53,14 +64,16 @@ void XcvrUi::update() {
 
             switch (mode) {
                 case NORMAL:
-                    if (xcvr->isRitOn()) {
-                        xcvr->ritIncrement(amountToAdd * 10);
-                    } else {
-                        xcvr->incrementFrequency(amountToAdd * stepSize);
-                    }
+                    xcvr->incrementFrequency(amountToAdd * stepSize);
+                    break;
+                case SETTING_RIT:
+                    xcvr->ritIncrement(amountToAdd * 10);
                     break;
                 case SETTING_SPEED:
                     keyer->speed_change(amountToAdd);
+                    break;
+                case SETTING_BAND:
+                    xcvr->nextBand();
                     break;
                 default:
                     break;
@@ -75,7 +88,7 @@ void XcvrUi::update() {
     } else if (encoderButtonState == ClickEncoder::Held) {
         xcvr->setRit(!xcvr->isRitOn());
         render();
-        // wait until button is released
+        // wait until button is released, otherwise we'll get continuous held events
         while (encoder->getButton() != ClickEncoder::Released);
     }
 
@@ -99,33 +112,62 @@ void XcvrUi::draw() {
     if (xcvr->isRitOn()) {
         renderRit();
         display->setFont(u8g_font_helvB08);
-        display->drawStr(90, 10, ritRepr);
+        if (mode == SETTING_RIT) {
+            display->drawRBox(88, 0, 31, 10, 2);
+            display->setColorIndex(0);
+            display->drawStr(90, 9, ritRepr);
+            display->setColorIndex(1);
+        } else {
+            display->drawStr(90, 9, ritRepr);
+        }
     }
 
     // render frequency
     renderFrequency();
     display->setFont(u8g_font_8x13B);
-    display->drawStr(0, 10, frequencyRepr);
+    // if (mode == NORMAL) {
+    //     display->drawRBox(6, 0, 78, 14, 2);
+    //     display->setColorIndex(0);
+    //     display->drawStr(0, 12, frequencyRepr);
+    //     display->setColorIndex(1);
+    // } else {
+        display->drawStr(0, 12, frequencyRepr);
+    // }
 
     // render wpm
-    wpmRepr[4] = (keyer->configuration.wpm > 9) ? (keyer->configuration.wpm / 10) + '0' : ' ';
-    wpmRepr[5] = (char)(keyer->configuration.wpm % 10) + '0';
-    display->drawStr(0, 30, wpmRepr);
+    wpmRepr[0] = (keyer->configuration.wpm > 9) ? (keyer->configuration.wpm / 10) + '0' : ' ';
+    wpmRepr[1] = (char)(keyer->configuration.wpm % 10) + '0';
+
+    if (mode == SETTING_SPEED) {
+        display->drawRBox(0, 17, 53, 17, 2);
+        display->setColorIndex(0);
+        display->drawStr(2, 30, wpmRepr);
+        display->setColorIndex(1);
+    } else {
+        display->drawStr(2, 30, wpmRepr);
+    }
 
     // render band
     Band& band = xcvr->bands[xcvr->getBand()];
     if (band.meters == 0) {
-        bandRepr[5] = 'E';
-        bandRepr[6] = 'x';
-        bandRepr[7] = 't';
-        bandRepr[8] = ' ';
+        bandRepr[0] = 'E';
+        bandRepr[1] = 'X';
+        bandRepr[2] = 'T';
+        bandRepr[3] = '.';
     } else {
-        bandRepr[5] = band.meters > 99 ? + '1' : ' ';
-        bandRepr[6] = ((band.meters / 10) % 10) + '0';
-        bandRepr[7] = (band.meters % 10) + '0';
-        bandRepr[8] = 'm';
+        bandRepr[0] = band.meters > 99 ? + '1' : ' ';
+        bandRepr[1] = ((band.meters / 10) % 10) + '0';
+        bandRepr[2] = (band.meters % 10) + '0';
+        bandRepr[3] = 'M';
     }
-    display->drawStr(0, 50, bandRepr);
+    if (mode == SETTING_BAND) {
+        display->drawRBox(0, 36, 36, 17, 2);
+        display->setColorIndex(0);
+        display->drawStr(2, 50, bandRepr);
+        display->setColorIndex(1);
+    } else {
+        display->drawStr(2, 50, bandRepr);
+    }
 }
 
 void XcvrUi::renderFrequency() {
@@ -216,6 +258,8 @@ void Xcvr::init(void) {
     bands[5].meters = 17;
     bands[6].meters = 15;
     bands[7].meters = 12;
+
+    setRit(true);
 
     applyCurrentBandSettings();
 }
