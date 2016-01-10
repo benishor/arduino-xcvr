@@ -23,6 +23,9 @@
  			- A1 = 
  			- A2 = 
 
+ 		Si5351
+ 			- 
+
  		I2C IO port expander
  			- A4 = I2C SDA
  			- A5 = I2C SCL

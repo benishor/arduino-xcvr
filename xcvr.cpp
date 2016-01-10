@@ -11,6 +11,7 @@ void timerIsr() {
 Bounce modeDebouncer = Bounce();
 
 static unsigned long lastUiUpdate = 0;
+#define INACTIVITY_MILLISECONDS_UNTIL_SLEEPING 30 * 1000
 
 void XcvrUi::init(Xcvr& xcvr, Keyer& keyer) {
     this->xcvr = &xcvr;
@@ -110,7 +111,7 @@ void XcvrUi::update() {
         display->sleepOff();
         render();
     } else {
-        if ((millis() - lastUiUpdate) > 10 * 1000) {
+        if ((millis() - lastUiUpdate) > INACTIVITY_MILLISECONDS_UNTIL_SLEEPING) {
             display->sleepOn();
         }
     }
@@ -134,6 +135,23 @@ void XcvrUi::render() {
 }
 
 void XcvrUi::draw() {
+    // display->setFont(u8g_font_8x13B);
+    display->setFont(u8g_font_helvB08);
+
+    // render frequency
+    renderFrequency();
+    // display->setFont(u8g_font_8x13B);
+    // if (mode == NORMAL) {
+    //     display->drawRBox(6, 0, 78, 14, 2);
+    //     display->setColorIndex(0);
+    //     display->drawStr(0, 12, frequencyRepr);
+    //     display->setColorIndex(1);
+    // } else {
+        display->drawStr(0, 12, frequencyRepr);
+    // }
+
+
+
     if (xcvr->isRitOn()) {
         renderRit();
         display->setFont(u8g_font_helvB08);
@@ -145,21 +163,9 @@ void XcvrUi::draw() {
         } else {
             display->drawStr(90, 9, ritRepr);
         }
+    } else {
+        display->setFont(u8g_font_helvB08);
     }
-
-    // render frequency
-    renderFrequency();
-    display->setFont(u8g_font_8x13B);
-    // if (mode == NORMAL) {
-    //     display->drawRBox(6, 0, 78, 14, 2);
-    //     display->setColorIndex(0);
-    //     display->drawStr(0, 12, frequencyRepr);
-    //     display->setColorIndex(1);
-    // } else {
-        display->drawStr(0, 12, frequencyRepr);
-    // }
-
-    display->setFont(u8g_font_helvB08);
 
     // render wpm
     wpmRepr[0] = (keyer->configuration.wpm > 9) ? (keyer->configuration.wpm / 10) + '0' : ' ';
