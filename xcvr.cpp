@@ -1,4 +1,5 @@
 #include <xcvr.h>
+#include <xcvr_fonts.h>
 
 XcvrUi::XcvrUi() {
 }
@@ -135,8 +136,9 @@ void XcvrUi::render() {
 }
 
 void XcvrUi::draw() {
-    // display->setFont(u8g_font_8x13B);
-    display->setFont(u8g_font_helvB08);
+    // display->setFont(u8g_font_8x13Br);
+    display->setFont(font_frequency);
+    // display->setFont(u8g_font_8x13_75r);
 
     // render frequency
     renderFrequency();
@@ -152,9 +154,10 @@ void XcvrUi::draw() {
 
 
 
+    // display->setFont(u8g_font_helvB08);
+    display->setFont(font_ui);
     if (xcvr->isRitOn()) {
         renderRit();
-        display->setFont(u8g_font_helvB08);
         if (mode == SETTING_RIT) {
             display->drawRBox(88, 0, 31, 10, 2);
             display->setColorIndex(0);
@@ -164,7 +167,7 @@ void XcvrUi::draw() {
             display->drawStr(90, 9, ritRepr);
         }
     } else {
-        display->setFont(u8g_font_helvB08);
+        // display->setFont(u8g_font_helvB08);
     }
 
     // render wpm
