@@ -5,6 +5,7 @@
 #include <si5351.h>
 #include <U8glib.h>
 #include <TimerOne.h>
+#include <Adafruit_MCP23017.h>
 
 #define ENC_DECODER (1 << 2)
 #include <ClickEncoder.h>
@@ -105,6 +106,7 @@ public:
 	void draw();
 	void renderFrequency();
 	void renderRit();
+	void advertiseStatus();
 
 	byte mode = NORMAL;
 	short int lastEncoderValue, currentEncoderValue;
@@ -277,6 +279,7 @@ public:
 	bool statusChanged = false;
 
 	Si5351 si5351;
+	Adafruit_MCP23017 mcp;
 
 private:
 	void recalculateBfo();

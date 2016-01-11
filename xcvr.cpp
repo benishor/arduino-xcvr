@@ -12,11 +12,15 @@ void timerIsr() {
 Bounce modeDebouncer = Bounce();
 
 static unsigned long lastUiUpdate = 0;
+static unsigned long lastStatusAdvertiseTime = 0;
 #define INACTIVITY_MILLISECONDS_UNTIL_SLEEPING 30 * 1000
+#define ADVERTISE_INTERVAL_MILLISECONDS 5 * 1000
+
 
 void XcvrUi::init(Xcvr& xcvr, Keyer& keyer) {
     this->xcvr = &xcvr;
     this->keyer = &keyer;
+    this->keyer->configuration.hz_sidetone = this->xcvr->cwPitch;
     display = new U8GLIB_SSD1306_128X64(13, 12, 0, 11, 10); // CS is not used
     encoder = new ClickEncoder(A1, A0, A2);
 
@@ -107,13 +111,18 @@ void XcvrUi::update() {
     }
 
 
+    unsigned long now = millis();
     if (xcvr->hasStatusChanged() || keyer->config_dirty) {
-        lastUiUpdate = millis();
+        lastUiUpdate = now;
+        advertiseStatus();
         display->sleepOff();
         render();
     } else {
-        if ((millis() - lastUiUpdate) > INACTIVITY_MILLISECONDS_UNTIL_SLEEPING) {
+        if ((now - lastUiUpdate) > INACTIVITY_MILLISECONDS_UNTIL_SLEEPING) {
             display->sleepOn();
+        }
+        if ((now - lastStatusAdvertiseTime) > ADVERTISE_INTERVAL_MILLISECONDS) {
+            advertiseStatus();
         }
     }
 }
@@ -123,7 +132,7 @@ static char frequencyRepr[11] = {' ', '2', '8', '.', '1', '1', '0', '.', '2', '0
 static char ritRepr[6] = {'+', '9', '.', '9', '9', '\0'};
 static char wpmRepr[7] = {'2', '0', ' ', 'W', 'P', 'M', '\0'};
 static char bandRepr[5] = {'1', '6', '0', 'M', '\0'};
-static char pitchRepr[7] = {'1', '2', '0', '0', 'H', 'z', '\0'};
+static char pitchRepr[7] = {'1', '2', '0', '0', 'H', 'Z', '\0'};
 
 void XcvrUi::render() {
     display->firstPage();
@@ -136,25 +145,14 @@ void XcvrUi::render() {
 }
 
 void XcvrUi::draw() {
-    // display->setFont(u8g_font_8x13Br);
     display->setFont(font_frequency);
-    // display->setFont(u8g_font_8x13_75r);
 
     // render frequency
     renderFrequency();
-    // display->setFont(u8g_font_8x13B);
-    // if (mode == NORMAL) {
-    //     display->drawRBox(6, 0, 78, 14, 2);
-    //     display->setColorIndex(0);
-    //     display->drawStr(0, 12, frequencyRepr);
-    //     display->setColorIndex(1);
-    // } else {
-        display->drawStr(0, 12, frequencyRepr);
-    // }
+    display->drawStr(0, 12, frequencyRepr);
 
 
 
-    // display->setFont(u8g_font_helvB08);
     display->setFont(font_ui);
     if (xcvr->isRitOn()) {
         renderRit();
@@ -166,8 +164,6 @@ void XcvrUi::draw() {
         } else {
             display->drawStr(90, 9, ritRepr);
         }
-    } else {
-        // display->setFont(u8g_font_helvB08);
     }
 
     // render wpm
@@ -315,6 +311,11 @@ void XcvrUi::renderRit() {
     ritRepr[4] = '0' + unit;
 }
 
+
+void XcvrUi::advertiseStatus() {
+    Serial.write("Advertising status\n");
+    lastStatusAdvertiseTime = millis();
+}
 
 // --------------------------------------------
 
