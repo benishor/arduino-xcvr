@@ -81,7 +81,7 @@ void XcvrUi::update() {
                     break;
                 case SETTING_KEYER_MODE:
                     keyer->configuration.keyer_mode++;
-                    if (keyer->configuration.keyer_mode == 6) {
+                    if (keyer->configuration.keyer_mode == 7) {
                         keyer->configuration.keyer_mode = 1;
                     }
                     keyer->config_dirty = 1;
@@ -199,6 +199,9 @@ void XcvrUi::draw() {
             break;
         case ULTIMATIC:
             display->drawStr(60, 30, "ULTIMATIC");
+            break;
+        case TUNING:
+            display->drawStr(60, 30, " TUNING  ");
             break;
         default:
             break;
@@ -491,35 +494,30 @@ void Keyer::initialize_default_modes() {
 }  
 
 void Keyer::initialize_pins() {
-  pinMode (paddle_left, INPUT);
-  digitalWrite (paddle_left, HIGH);
+    pinMode (paddle_left, INPUT);
+    digitalWrite (paddle_left, HIGH);
 
-  pinMode (paddle_right, INPUT);
-  digitalWrite (paddle_right, HIGH);
+    pinMode (paddle_right, INPUT);
+    digitalWrite (paddle_right, HIGH);
 
-  if (ptt_tx_1) {
     pinMode (ptt_tx_1, OUTPUT);
     digitalWrite (ptt_tx_1, LOW);
-  }
 
-  if (tx_key_line_1) {
     pinMode (tx_key_line_1, OUTPUT);
     digitalWrite (tx_key_line_1, LOW);
-  }
 
-  pinMode(sidetone_line, OUTPUT);
-  digitalWrite(sidetone_line, LOW);
+    pinMode(sidetone_line, OUTPUT);
+    digitalWrite(sidetone_line, LOW);
 
-  if (tx_key_dit) {
-    pinMode(tx_key_dit, OUTPUT);
-    digitalWrite(tx_key_dit, LOW);
-  }
-  if (tx_key_dah) {
-    pinMode(tx_key_dah, OUTPUT);
-    digitalWrite(tx_key_dah, LOW);
-  }
+    if (tx_key_dit) {
+        pinMode(tx_key_dit, OUTPUT);
+        digitalWrite(tx_key_dit, LOW);
+    }
+    if (tx_key_dah) {
+        pinMode(tx_key_dah, OUTPUT);
+        digitalWrite(tx_key_dah, LOW);
+    }
 }
-
 
 
 // Subroutines --------------------------------------------------------------------------------------------
@@ -632,68 +630,66 @@ void Keyer::check_paddles() {
 //-------------------------------------------------------------------------------------------------------
 
 void Keyer::ptt_key() {
-  if (ptt_line_activated == 0) {   // if PTT is currently deactivated, bring it up and insert PTT lead time delay
-      digitalWrite(ptt_tx_1, HIGH);    
-      delay(ptt_lead_time);
-    ptt_line_activated = 1;
-  }
-  ptt_time = millis();
+    if (ptt_line_activated == 0) {   // if PTT is currently deactivated, bring it up and insert PTT lead time delay
+        digitalWrite(ptt_tx_1, HIGH);    
+        delay(ptt_lead_time);
+        ptt_line_activated = 1;
+    }
+    ptt_time = millis();
 }
 
 //-------------------------------------------------------------------------------------------------------
 void Keyer::ptt_unkey() {
-  if (ptt_line_activated) {
-      digitalWrite (ptt_tx_1, LOW);
-    ptt_line_activated = 0;
-  }
+    if (ptt_line_activated) {
+        digitalWrite (ptt_tx_1, LOW);
+        ptt_line_activated = 0;
+    }
 }
 
 //-------------------------------------------------------------------------------------------------------
 
 void Keyer::check_ptt_tail() {
-
-  if (key_state) {
-    ptt_time = millis();
-  } else {
-    if (ptt_line_activated && manual_ptt_invoke == 0) {
-      //if ((millis() - ptt_time) > ptt_tail_time) {
-      if (last_sending_type == MANUAL_SENDING) {
-        if ((millis() - ptt_time) >= ((configuration.length_wordspace*ptt_hang_time_wordspace_units)*float(1200/configuration.wpm)) ) {
-          ptt_unkey();
-        }          
-      } else {
-        if ((millis() - ptt_time) > ptt_tail_time) {
-            ptt_unkey();
+    if (key_state) {
+        ptt_time = millis();
+    } else {
+        if (ptt_line_activated && manual_ptt_invoke == 0) {
+            //if ((millis() - ptt_time) > ptt_tail_time) {
+            if (last_sending_type == MANUAL_SENDING) {
+                if ((millis() - ptt_time) >= ((configuration.length_wordspace*ptt_hang_time_wordspace_units)*float(1200/configuration.wpm)) ) {
+                    ptt_unkey();
+                }          
+            } else {
+                if ((millis() - ptt_time) > ptt_tail_time) {
+                    ptt_unkey();
+                }
+            }
         }
-      }
     }
-  }
 }
 
 //-------------------------------------------------------------------------------------------------------
 
 void Keyer::check_dit_paddle() {
-  byte pin_value = paddle_pin_read(paddle_left);
-  if (pin_value == 0) {
-    dit_buffer = 1;
-    manual_ptt_invoke = 0;
-  }
+    byte pin_value = paddle_pin_read(paddle_left);
+    if (pin_value == 0) {
+        dit_buffer = 1;
+        manual_ptt_invoke = 0;
+    }
 }
 
 //-------------------------------------------------------------------------------------------------------
 
 void Keyer::check_dah_paddle() {
-  byte pin_value = paddle_pin_read(paddle_right);
-  if (pin_value == 0) {
-    dah_buffer = 1;
-    manual_ptt_invoke = 0;
-  }
+    byte pin_value = paddle_pin_read(paddle_right);
+    if (pin_value == 0) {
+        dah_buffer = 1;
+        manual_ptt_invoke = 0;
+    }
 }
 
 //-------------------------------------------------------------------------------------------------------
 
 void Keyer::send_dit(byte sending_type) {
-
   // notes: key_compensation is a straight x mS lengthening or shortening of the key down time
   //        weighting is
 
@@ -764,33 +760,32 @@ void Keyer::send_dah(byte sending_type) {
 //-------------------------------------------------------------------------------------------------------
 
 void Keyer::tx_and_sidetone_key(int state, byte sending_type) {
+    if (state && key_state == 0) {
+        if (key_tx) {
+            byte previous_ptt_line_activated = ptt_line_activated;
+            ptt_key();
+            digitalWrite(tx_key_line_1, HIGH);
+            if ((first_extension_time) && (previous_ptt_line_activated == 0)) {
+                delay(first_extension_time);
+            }
+        }
 
-  if (state && key_state == 0) {
-    if (key_tx) {
-      byte previous_ptt_line_activated = ptt_line_activated;
-      ptt_key();
-      digitalWrite(tx_key_line_1, HIGH);
-      if ((first_extension_time) && (previous_ptt_line_activated == 0)) {
-        delay(first_extension_time);
-      }
+        if (configuration.sidetone_mode == SIDETONE_ON || configuration.sidetone_mode == SIDETONE_PADDLE_ONLY) {
+            tone(sidetone_line, configuration.hz_sidetone);
+        }
+        key_state = 1;
+    } else {
+        if (state == 0 && key_state) {
+            if (key_tx) {
+                digitalWrite (tx_key_line_1, LOW);
+                ptt_key();
+            }
+            if (configuration.sidetone_mode == SIDETONE_ON || configuration.sidetone_mode == SIDETONE_PADDLE_ONLY) {
+                noTone(sidetone_line);
+            }
+            key_state = 0;
+        }
     }
-
-    if (configuration.sidetone_mode == SIDETONE_ON || configuration.sidetone_mode == SIDETONE_PADDLE_ONLY) {
-      tone(sidetone_line, configuration.hz_sidetone);
-    }
-    key_state = 1;
-  } else {
-    if (state == 0 && key_state) {
-      if (key_tx) {
-        digitalWrite (tx_key_line_1, LOW);
-        ptt_key();
-      }
-      if (configuration.sidetone_mode == SIDETONE_ON || configuration.sidetone_mode == SIDETONE_PADDLE_ONLY) {
-        noTone(sidetone_line);
-      }
-      key_state = 0;
-    }
-  }
 }
 
 //-------------------------------------------------------------------------------------------------------
@@ -890,6 +885,18 @@ void Keyer::service_dit_dah_buffers() {
           tx_and_sidetone_key(1,MANUAL_SENDING);
         } else {
           tx_and_sidetone_key(0,MANUAL_SENDING);
+        }
+      } else {
+        if (configuration.keyer_mode == TUNING) {
+            if (dah_buffer) {
+                // dah_buffer = 0;
+                tx_and_sidetone_key(0, MANUAL_SENDING);
+                dit_buffer = 0;
+                dah_buffer = 0;
+            } else if (dit_buffer) {
+                // dit_buffer = 0;
+                tx_and_sidetone_key(1, MANUAL_SENDING);
+            }
         }
       }
     }

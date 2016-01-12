@@ -183,6 +183,7 @@ public:
 	#define IAMBIC_A 3
 	#define BUG 4
 	#define ULTIMATIC 5
+	#define TUNING 6
 
 	#define ULTIMATIC_NORMAL 0
 	#define ULTIMATIC_DIT_PRIORITY 1
