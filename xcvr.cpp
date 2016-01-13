@@ -316,7 +316,20 @@ void XcvrUi::renderRit() {
 
 
 void XcvrUi::advertiseStatus() {
-    Serial.write("Advertising status\n");
+    char buffer[12];
+    Serial.write("STS F");
+    Serial.write(ltoa(xcvr->frequency, buffer, 10));
+    Serial.write(" R");
+    Serial.write(itoa(xcvr->ritAmount, buffer, 10));
+    Serial.write(" S");
+    Serial.write(itoa(xcvr->sideband, buffer, 10));
+    Serial.write(" B");
+    Serial.write(itoa(xcvr->bandIndex, buffer, 10));
+    Serial.write(" P");
+    Serial.write(itoa(xcvr->cwPitch, buffer, 10));
+    Serial.write(" W");
+    Serial.write(itoa(keyer->configuration.wpm, buffer, 10));
+    Serial.write("\n");
     lastStatusAdvertiseTime = millis();
 }
 
