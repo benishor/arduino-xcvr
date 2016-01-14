@@ -281,6 +281,7 @@ public:
 
 	long long vfoFrequency; // in Hz, changed when switching encoder or rit
 	long long bfoFrequency; // in Hz, changed when switching filters or sideband
+	long long transmitBfoFrequency; // in Hz, changed when switching filters or sideband
 	bool statusChanged = false;
 
 	Si5351 si5351;

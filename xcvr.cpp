@@ -14,7 +14,7 @@ Bounce modeDebouncer = Bounce();
 
 static unsigned long lastUiUpdate = 0;
 static unsigned long lastStatusAdvertiseTime = 0;
-#define INACTIVITY_MILLISECONDS_UNTIL_SLEEPING 30 * 1000
+#define INACTIVITY_MILLISECONDS_UNTIL_SLEEPING 10 * 1000
 #define ADVERTISE_INTERVAL_MILLISECONDS 5 * 1000
 
 
@@ -477,11 +477,13 @@ void Xcvr::setCwPitch(unsigned short int pitch) {
 void Xcvr::key() {
     inTransmitMode = true;
     si5351.set_freq(vfoFrequency * 100, 0ULL, SI5351_CLK0);
+    si5351.set_freq(transmitBfoFrequency * 100, 0ULL, SI5351_CLK2);
 }
 
 
 void Xcvr::unkey() {
     inTransmitMode = false;
+    si5351.set_freq(bfoFrequency * 100, 0ULL, SI5351_CLK2);
     setVfoFrequency();
 }
 
@@ -502,6 +504,10 @@ void Xcvr::recalculateBfo() {
         else
             bfoFrequency -= amountToCorrect;
     }
+
+    transmitBfoFrequency = sideband == USB ?
+                                bfoFrequency - cwPitch :
+                                bfoFrequency + cwPitch;
 }
 
 void Xcvr::incrementFrequency(int amount) {
@@ -511,7 +517,7 @@ void Xcvr::incrementFrequency(int amount) {
 }
 
 void Xcvr::setVfoFrequency() {
-    si5351.set_freq((vfoFrequency + (isRitOn() ? ritAmount : 0) + cwPitch) * 100, 0ULL, SI5351_CLK0);
+    si5351.set_freq((vfoFrequency + (isRitOn() ? ritAmount : 0)) * 100, 0ULL, SI5351_CLK0);
     statusChanged = true;
 }
 
