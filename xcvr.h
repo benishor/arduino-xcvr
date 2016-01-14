@@ -252,6 +252,7 @@ public:
 	void setCwPitch(unsigned short int pitch);
 
 	void nextBand();
+	void previousBand();
 	byte inline getBand() { return bandIndex; }
 
 	void ritReset();
@@ -267,7 +268,7 @@ public:
 	Filter filters[1];
 	unsigned char filterIndex;
 
-	Band bands[9]; // 160, 80, 40, 30, 20, 15, 17, 10, ext
+	Band bands[10]; // 160, 80, 40, 30, 20, 15, 17, 12, 10, ext
 	unsigned char bandIndex; // this one can be merged with filterIndex and status changedto save space
 
 	Sideband sideband; // 0 == upper, 1 == lower

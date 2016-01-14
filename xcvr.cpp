@@ -24,7 +24,6 @@ void XcvrUi::init(Xcvr& xcvr, Keyer& keyer) {
     display = new U8GLIB_SSD1306_128X64(13, 12, 0, 11, 10); // CS is not used
     encoder = new ClickEncoder(A1, A0, A2);
 
-
     Timer1.initialize(1000);
     Timer1.attachInterrupt(timerIsr);
 
@@ -91,7 +90,10 @@ void XcvrUi::update() {
                     xcvr->setCwPitch(keyer->configuration.hz_sidetone);
                     break;
                 case SETTING_BAND:
-                    xcvr->nextBand();
+                    if (amountToAdd > 0)
+                        xcvr->nextBand();
+                    else
+                        xcvr->previousBand();
                     break;
                 default:
                     break;
@@ -353,7 +355,8 @@ void Xcvr::init(void) {
     bands[5].startFrequency = 18000;
     bands[6].startFrequency = 21000;
     bands[7].startFrequency = 24000;
-    bands[8].startFrequency = 10000;
+    bands[8].startFrequency = 28000;
+    bands[9].startFrequency = 10000;
 
     bands[0].meters = 160;
     bands[1].meters = 80;
@@ -363,6 +366,7 @@ void Xcvr::init(void) {
     bands[5].meters = 17;
     bands[6].meters = 15;
     bands[7].meters = 12;
+    bands[8].meters = 10;
 
     setRit(true);
 
@@ -389,9 +393,20 @@ void Xcvr::setSideband(Sideband sideband) {
 
 // -----------------------------------------------------------------------------
 
+#define NUMBER_OF_BANDS 10
+
 void Xcvr::nextBand() {
     bandIndex++;
-    bandIndex %= 9;
+    bandIndex %= NUMBER_OF_BANDS;
+    applyCurrentBandSettings();
+}
+
+void Xcvr::previousBand() {
+    if (bandIndex == 0) {
+        bandIndex = NUMBER_OF_BANDS - 1;
+    } else {
+        bandIndex--;
+    }
     applyCurrentBandSettings();
 }
 
