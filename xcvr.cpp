@@ -5,6 +5,7 @@ XcvrUi::XcvrUi() {
 }
 
 ClickEncoder* XcvrUi::encoder;
+Xcvr* transceiver;
 void timerIsr() {
     XcvrUi::encoder->service();
 }
@@ -21,11 +22,14 @@ void XcvrUi::init(Xcvr& xcvr, Keyer& keyer) {
     this->xcvr = &xcvr;
     this->keyer = &keyer;
     this->keyer->configuration.hz_sidetone = this->xcvr->cwPitch;
+
     display = new U8GLIB_SSD1306_128X64(13, 12, 0, 11, 10); // CS is not used
     encoder = new ClickEncoder(A1, A0, A2);
 
     Timer1.initialize(1000);
     Timer1.attachInterrupt(timerIsr);
+
+
 
     // initialize UI mode button
     pinMode(8, INPUT);
@@ -338,15 +342,15 @@ void XcvrUi::advertiseStatus() {
 // --------------------------------------------
 
 void Xcvr::init(void) {
+    transceiver = this;
+
     // initialize synthesizer
     si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0);
 
     si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);
     si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_8MA);
 
-    si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);  
-
-    si5351.set_freq(123456700LL, 0ULL, SI5351_CLK0);
+    si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
 
     // set band settings
     bands[0].startFrequency = 1800;
@@ -379,6 +383,7 @@ void Xcvr::init(void) {
     }
 
     setRit(true);
+    inTransmitMode = false;
 
     bandIndex = 2;
     applyCurrentBandSettings();
@@ -469,6 +474,20 @@ void Xcvr::setCwPitch(unsigned short int pitch) {
 
 // -----------------------------------------------------------------------------
 
+void Xcvr::key() {
+    inTransmitMode = true;
+    si5351.set_freq(vfoFrequency * 100, 0ULL, SI5351_CLK0);
+}
+
+
+void Xcvr::unkey() {
+    inTransmitMode = false;
+    setVfoFrequency();
+}
+
+
+// -----------------------------------------------------------------------------
+
 void Xcvr::recalculateBfo() {
     if (sideband == USB)
         bfoFrequency = filters[filterIndex].centerFrequency + cwPitch;
@@ -492,8 +511,7 @@ void Xcvr::incrementFrequency(int amount) {
 }
 
 void Xcvr::setVfoFrequency() {
-    // TODO: make a distinction between RX and TX
-    si5351.set_freq((vfoFrequency + (isRitOn() ? ritAmount : 0)) * 100, 0ULL, SI5351_CLK0);
+    si5351.set_freq((vfoFrequency + (isRitOn() ? ritAmount : 0) + cwPitch) * 100, 0ULL, SI5351_CLK0);
     statusChanged = true;
 }
 
@@ -667,8 +685,11 @@ void Keyer::check_paddles() {
 
 void Keyer::ptt_key() {
     if (ptt_line_activated == 0) {   // if PTT is currently deactivated, bring it up and insert PTT lead time delay
-        digitalWrite(ptt_tx_1, HIGH);    
-        delay(ptt_lead_time);
+        digitalWrite(ptt_tx_1, HIGH);
+        // we need to make this as fast as possible, otherwise a delay will be audible between first impulse and the rest
+        transceiver->key();
+        // had to comment out the line below this because setting the TX frequency above introduces too much delay 
+        // delay(ptt_lead_time);
         ptt_line_activated = 1;
     }
     ptt_time = millis();
@@ -679,6 +700,7 @@ void Keyer::ptt_unkey() {
     if (ptt_line_activated) {
         digitalWrite (ptt_tx_1, LOW);
         ptt_line_activated = 0;
+        transceiver->unkey();
     }
 }
 
@@ -982,4 +1004,3 @@ void Keyer::update() {
     service_dit_dah_buffers();
     check_ptt_tail();
 }
-

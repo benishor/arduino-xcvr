@@ -261,6 +261,8 @@ public:
 	void ritIncrement(short amount);
 	short getRitAmount();
 
+	void key();
+	void unkey();
 
 	short ritAmount = 0; // delta, in Hz
 	long long frequency = 1000000LL; // in Hz
@@ -274,6 +276,7 @@ public:
 	Sideband sideband; // 0 == upper, 1 == lower
 	word cwPitch = 500;
 
+	unsigned char inTransmitMode;
 	unsigned char flags;
 
 	long long vfoFrequency; // in Hz, changed when switching encoder or rit
