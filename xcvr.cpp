@@ -346,6 +346,8 @@ void Xcvr::init(void) {
 
     si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);  
 
+    si5351.set_freq(123456700LL, 0ULL, SI5351_CLK0);
+
     // set band settings
     bands[0].startFrequency = 1800;
     bands[1].startFrequency = 3500;
@@ -368,13 +370,17 @@ void Xcvr::init(void) {
     bands[7].meters = 12;
     bands[8].meters = 10;
 
-    setRit(true);
+    filters[0].centerFrequency = 9000000LL;
+    filters[0].bandwidth = 500;
 
     mcp.begin();
     for (byte i = 0; i < 10; i++) {
         mcp.pinMode(i, OUTPUT);
     }
 
+    setRit(true);
+
+    bandIndex = 2;
     applyCurrentBandSettings();
 }
 
@@ -412,7 +418,7 @@ void Xcvr::previousBand() {
 
 void Xcvr::applyCurrentBandSettings() {
     frequency = bands[bandIndex].startFrequency * 1000LL;
-    vfoFrequency = frequency - filters[filterIndex].centerFrequency;
+    vfoFrequency = abs(frequency - filters[filterIndex].centerFrequency);
     setSideband(bands[bandIndex].isUpperSideband ? USB : LSB);
     // ritReset();
     setVfoFrequency();
@@ -487,12 +493,12 @@ void Xcvr::incrementFrequency(int amount) {
 
 void Xcvr::setVfoFrequency() {
     // TODO: make a distinction between RX and TX
-    si5351.set_freq(vfoFrequency + isRitOn() ? ritAmount : 0, 0ULL, SI5351_CLK0);
+    si5351.set_freq((vfoFrequency + (isRitOn() ? ritAmount : 0)) * 100, 0ULL, SI5351_CLK0);
     statusChanged = true;
 }
 
 void Xcvr::setBfoFrequency() {
-    si5351.set_freq(bfoFrequency, 0ULL, SI5351_CLK2);
+    si5351.set_freq(bfoFrequency * 100, 0ULL, SI5351_CLK2);
     statusChanged = true;
 }
 
