@@ -366,6 +366,11 @@ void Xcvr::init(void) {
 
     setRit(true);
 
+    mcp.begin();
+    for (byte i = 0; i < 10; i++) {
+        mcp.pinMode(i, OUTPUT);
+    }
+
     applyCurrentBandSettings();
 }
 
@@ -400,12 +405,9 @@ void Xcvr::applyCurrentBandSettings() {
 }
 
 void Xcvr::switchBandFilters() {
-    // TODO: use a port expander for these!
-    char value = bandIndex; // write it
-    // digitalWrite(5, (value & 1) == 1 ? HIGH : LOW);
-    // digitalWrite(6, (value & 2) == 1 ? HIGH : LOW);
-    // digitalWrite(7, (value & 4) == 1 ? HIGH : LOW);
-    // digitalWrite(8, (value & 8) == 1 ? HIGH : LOW);
+    for (byte i = 0; i < 10; i++) {
+        mcp.digitalWrite(i, i == bandIndex ? HIGH : LOW);
+    }
 }
 
 // -----------------------------------------------------------------------------
