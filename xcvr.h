@@ -265,7 +265,7 @@ public:
 	void unkey();
 
 	short ritAmount = 0; // delta, in Hz
-	long long frequency = 1000000LL; // in Hz
+	long long frequency = 1000000LL; // in Hz, the frequency that is being displayed on screen
 
 	Filter filters[1];
 	unsigned char filterIndex;
@@ -279,9 +279,10 @@ public:
 	unsigned char inTransmitMode;
 	unsigned char flags;
 
-	long long vfoFrequency; // in Hz, changed when switching encoder or rit
-	long long bfoFrequency; // in Hz, changed when switching filters or sideband
-	long long transmitBfoFrequency; // in Hz, changed when switching filters or sideband
+	long long transmitVfoFrequency; // in hundreds of Hz, changed when switching encoder or rit
+	long long receiveVfoFrequency; // in hundreds of Hz, changed when switching encoder, rit, or enabling/disabling rit
+	long long receiveBfoFrequency; // in hundreds of Hz, changed when switching filters or sideband
+	long long transmitBfoFrequency; // in hundreds of Hz, changed when switching filters or sideband
 	bool statusChanged = false;
 
 	Si5351 si5351;

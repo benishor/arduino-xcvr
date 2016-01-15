@@ -14,7 +14,7 @@ Bounce modeDebouncer = Bounce();
 
 static unsigned long lastUiUpdate = 0;
 static unsigned long lastStatusAdvertiseTime = 0;
-#define INACTIVITY_MILLISECONDS_UNTIL_SLEEPING 10 * 1000
+#define INACTIVITY_MILLISECONDS_UNTIL_SLEEPING 300 * 1000
 #define ADVERTISE_INTERVAL_MILLISECONDS 5 * 1000
 
 
@@ -156,7 +156,6 @@ void XcvrUi::draw() {
     // render frequency
     renderFrequency();
     display->drawStr(0, 12, frequencyRepr);
-
 
 
     display->setFont(font_ui);
@@ -422,10 +421,11 @@ void Xcvr::previousBand() {
 }
 
 void Xcvr::applyCurrentBandSettings() {
-    frequency = bands[bandIndex].startFrequency * 1000LL;
-    vfoFrequency = abs(frequency - filters[filterIndex].centerFrequency);
+    frequency = bands[bandIndex].startFrequency * 1000LL; // from KHz to Hz
+    transmitVfoFrequency = abs(frequency - filters[filterIndex].centerFrequency) * 100;
     setSideband(bands[bandIndex].isUpperSideband ? USB : LSB);
     // ritReset();
+    receiveVfoFrequency = transmitVfoFrequency + (isRitOn() ? ritAmount : 0) * 100;;
     setVfoFrequency();
     switchBandFilters();
 }
@@ -452,11 +452,13 @@ void Xcvr::setRit(bool on) {
     else
         this->flags &= ~RIT_ON;
 
+    receiveVfoFrequency = transmitVfoFrequency + (isRitOn() ? ritAmount : 0) * 100;;
     setVfoFrequency();
 }
 
 void Xcvr::ritIncrement(short amount) {
     this->ritAmount += amount;
+    receiveVfoFrequency = transmitVfoFrequency + (isRitOn() ? ritAmount : 0) * 100;;
     setVfoFrequency();
 }
 
@@ -476,15 +478,17 @@ void Xcvr::setCwPitch(unsigned short int pitch) {
 
 void Xcvr::key() {
     inTransmitMode = true;
-    si5351.set_freq(vfoFrequency * 100, 0ULL, SI5351_CLK0);
-    si5351.set_freq(transmitBfoFrequency * 100, 0ULL, SI5351_CLK2);
+    // set VFOs to transmit mode
+    si5351.set_freq(transmitVfoFrequency, 0ULL, SI5351_CLK0);
+    si5351.set_freq(transmitBfoFrequency, 0ULL, SI5351_CLK2);
 }
 
 
 void Xcvr::unkey() {
     inTransmitMode = false;
-    si5351.set_freq(bfoFrequency * 100, 0ULL, SI5351_CLK2);
-    setVfoFrequency();
+    // set VFOs to receive mode
+    si5351.set_freq(receiveVfoFrequency, 0ULL, SI5351_CLK0);
+    si5351.set_freq(receiveBfoFrequency, 0ULL, SI5351_CLK2);
 }
 
 
@@ -492,37 +496,42 @@ void Xcvr::unkey() {
 
 void Xcvr::recalculateBfo() {
     if (sideband == USB)
-        bfoFrequency = filters[filterIndex].centerFrequency + cwPitch;
+        receiveBfoFrequency = filters[filterIndex].centerFrequency + cwPitch;
     else
-        bfoFrequency = filters[filterIndex].centerFrequency - cwPitch;
+        receiveBfoFrequency = filters[filterIndex].centerFrequency - cwPitch;
 
     // correct BFO if needed so that we don't get both sidebands of the signal
     if (filters[filterIndex].bandwidth / 2 > cwPitch) {
         short int amountToCorrect = filters[filterIndex].bandwidth / 2 - cwPitch;
         if (sideband == USB)
-            bfoFrequency += amountToCorrect;
+            receiveBfoFrequency += amountToCorrect;
         else
-            bfoFrequency -= amountToCorrect;
+            receiveBfoFrequency -= amountToCorrect;
     }
 
     transmitBfoFrequency = sideband == USB ?
-                                bfoFrequency - cwPitch :
-                                bfoFrequency + cwPitch;
+                                receiveBfoFrequency - cwPitch :
+                                receiveBfoFrequency + cwPitch;
+
+    receiveBfoFrequency *= 100; // to hundreds of Hz
+    transmitBfoFrequency *= 100; // to hundreds of Hz
 }
 
 void Xcvr::incrementFrequency(int amount) {
-    vfoFrequency += amount;
+    short int hundredsOfHzAmount = amount * 100;
+    receiveVfoFrequency += hundredsOfHzAmount;
+    transmitVfoFrequency += hundredsOfHzAmount;
     frequency += amount;
     setVfoFrequency();
 }
 
 void Xcvr::setVfoFrequency() {
-    si5351.set_freq((vfoFrequency + (isRitOn() ? ritAmount : 0)) * 100, 0ULL, SI5351_CLK0);
+    si5351.set_freq(receiveVfoFrequency, 0ULL, SI5351_CLK0);
     statusChanged = true;
 }
 
 void Xcvr::setBfoFrequency() {
-    si5351.set_freq(bfoFrequency * 100, 0ULL, SI5351_CLK2);
+    si5351.set_freq(receiveBfoFrequency, 0ULL, SI5351_CLK2);
     statusChanged = true;
 }
 
